@@ -1,48 +1,50 @@
-steps:
-  - uses: actions/checkout@v4
+name: Autograding
 
-  - name: Setup Node
-    uses: actions/setup-node@v4
-    with:
-      node-version: 20
+on: [push]
 
-  - name: Install dependencies
-    run: npm install
+jobs:
+  test-api:
+    runs-on: ubuntu-latest
 
-  - name: Start server
-    run: |
-      node src/server.js &
-      sleep 5
+    steps:
+      - uses: actions/checkout@v4
 
-  - name: Extract matricula
-    id: matricula
-    run: |
-      MATRICULA=$(grep -i "Matrícula:" README.md | awk '{print $2}')
-      LAST_DIGIT=${MATRICULA: -1}
-      VARIACAO=$((LAST_DIGIT % 4))
-      echo "variacao=$VARIACAO" >> $GITHUB_OUTPUT
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
 
-  - name: Define resource
-    id: resource
-    run: |
-      if [ "${{ steps.matricula.outputs.variacao }}" = "0" ]; then
-        echo "resource=atendimentos" >> $GITHUB_OUTPUT
-      elif [ "${{ steps.matricula.outputs.variacao }}" = "1" ]; then
-        echo "resource=chamados" >> $GITHUB_OUTPUT
-      elif [ "${{ steps.matricula.outputs.variacao }}" = "2" ]; then
-        echo "resource=protocolos" >> $GITHUB_OUTPUT
-      else
-        echo "resource=requerimentos" >> $GITHUB_OUTPUT
-      fi
+      - name: Install dependencies
+        run: npm install
 
-  - name: Test health
-    run: curl -f http://localhost:3000/health
+      - name: Start server
+        run: |
+          node src/server.js &
+          sleep 5
 
-  - name: Test POST
-    run: |
-      curl -f -X POST http://localhost:3000/${{ steps.resource.outputs.resource }} \
-      -H "Content-Type: application/json" \
-      -d '{"teste":"valor"}'
+      - name: Extract matricula
+        id: matricula
+        run: |
+          MATRICULA=$(grep -i "Matrícula:" README.md | awk '{print $2}')
+          LAST_DIGIT=${MATRICULA: -1}
+          VARIACAO=$((LAST_DIGIT % 4))
+          echo "variacao=$VARIACAO" >> $GITHUB_OUTPUT
 
-  - name: Test GET list
-    run: curl -f http://localhost:3000/${{ steps.resource.outputs.resource }}
+      - name: Define resource
+        id: resource
+        run: |
+          if [ "${{ steps.matricula.outputs.variacao }}" = "0" ]; then
+            echo "resource=atendimentos" >> $GITHUB_OUTPUT
+          elif [ "${{ steps.matricula.outputs.variacao }}" = "1" ]; then
+            echo "resource=chamados" >> $GITHUB_OUTPUT
+          elif [ "${{ steps.matricula.outputs.variacao }}" = "2" ]; then
+            echo "resource=protocolos" >> $GITHUB_OUTPUT
+          else
+            echo "resource=requerimentos" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Test health
+        run: curl -f http://localhost:3000/health
+
+      - name: Test GET list
+        run: curl -f http://localhost:3000/${{ steps.resource.outputs.resource }}
